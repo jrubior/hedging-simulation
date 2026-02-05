@@ -96,7 +96,7 @@ function results = fit_svx_jumpv_pf_full(r, m, S, V, varargin)
     delta0   = zeros(K,1);
     psi00    = log(0.05/0.95);   % logit(0.05)
     psi0     = zeros(Kv,1);     % no vol dependence initially
-    muj0     = 0.03;            % 3% average positive jump
+    muj0     = 0.05;            % 5% average positive jump
 
     theta0 = pack_params(alpha0, beta0, gamma0, omega0, phi0, sigmah0, ...
                           delta0, psi00, psi0, muj0);
@@ -455,7 +455,7 @@ function theta = pack_params(alpha, beta, gamma, omega, phi, sigmah, ...
                               delta, psi0, psi, muj)
     eta_phi = atanh(max(min(phi,0.999),-0.999));
     eta_sh  = log(max(sigmah, 1e-6));
-    eta_muj = log(max(muj, 1e-6));
+    eta_muj = log(max(muj - 0.01, 1e-6));
     theta = [alpha; beta; gamma(:); omega; eta_phi; eta_sh; ...
              delta(:); psi0; psi(:); eta_muj];
 end
