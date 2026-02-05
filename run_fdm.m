@@ -3,7 +3,7 @@
 %
 %  r_t  = Column B of Portfolio_returns  (FDM)
 %  m_t  = Column C of States             (STOCK_EXCESS_RETURN)
-%  s_t  = Columns B,D–P of States        (14 state variables)
+%  s_t  = Columns B,D–P of States + 4 volatilities (18 state variables)
 
 clear; clc;
 
@@ -19,8 +19,16 @@ st   = readtable(file, 'Sheet', 'States');
 m    = st{:,3};           % Column C: STOCK_EXCESS_RETURN
 S    = [st{:,2}, st{:,4:16}];  % Columns B,D–P: 14 state variables
 
+% Volatilities (4 additional state variables)
+dates   = ret{:,1};
+vol_tab = readtable('volatilities.xlsx');
+vol_d   = vol_tab{:,1};
+[~, i_ret, i_vol] = intersect(dates, vol_d);
+V = NaN(length(dates), 4);
+V(i_ret,:) = vol_tab{i_vol, 2:5};
+S = [S, V];                   % 14 + 4 = 18 state variables
+
 % Keep only data up to 12/31/2025
-dates = ret{:,1};
 idx   = dates <= datetime(2025,12,31);
 r = r(idx);  m = m(idx);  S = S(idx,:);
 
