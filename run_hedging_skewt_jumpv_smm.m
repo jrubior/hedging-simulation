@@ -84,7 +84,7 @@ b_skt = sqrt(max(1 + 3*p.lambda^2 - a_skt^2, 1e-10));
 % Sample from Hansen's skewed-t
 rng(99);
 Z_base = randn(Tsim, Nsim_final);
-chi2_draws = 2 * gamrnd(p.nu / 2, 1, Tsim, Nsim_final);
+chi2_draws = 2 * gamrnd(p.nu / 2 * ones(Tsim, Nsim_final), 1);
 V_t = Z_base ./ sqrt(chi2_draws / p.nu);
 V_s = V_t * sqrt((p.nu - 2) / p.nu);
 U_bern = (rand(Tsim, Nsim_final) < (1 + p.lambda)/2);

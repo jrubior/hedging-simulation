@@ -195,7 +195,7 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
 
         % --- Generate t_nu via gamma draw (continuous nu) ---
         Z_ = randn(Tsim, Nsim);
-        chi2_ = 2 * gamrnd(pd_.nu / 2, 1, Tsim, Nsim);
+        chi2_ = 2 * gamrnd(pd_.nu / 2 * ones(Tsim, Nsim), 1);
         t_ = Z_ ./ sqrt(chi2_ / pd_.nu);
         Vs_ = t_ * sqrt((pd_.nu - 2) / pd_.nu);
 
