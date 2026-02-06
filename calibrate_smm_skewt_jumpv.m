@@ -193,14 +193,10 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
         a_skt_ = 4*pd_.lambda*c_skt_*(pd_.nu-2)/(pd_.nu-1);
         b_skt_ = sqrt(max(1 + 3*pd_.lambda^2 - a_skt_^2, 1e-10));
 
-        % --- Generate t_nu via sum-of-squared-normals ---
-        nu_int_ = max(round(pd_.nu), 3);
+        % --- Generate t_nu via gamma draw (continuous nu) ---
         Z_ = randn(Tsim, Nsim);
-        chi2_ = zeros(Tsim, Nsim);
-        for kk_ = 1:nu_int_
-            chi2_ = chi2_ + randn(Tsim, Nsim).^2;
-        end
-        t_ = Z_ ./ sqrt(chi2_ / nu_int_);
+        chi2_ = 2 * gamrnd(pd_.nu / 2, 1, Tsim, Nsim);
+        t_ = Z_ ./ sqrt(chi2_ / pd_.nu);
         Vs_ = t_ * sqrt((pd_.nu - 2) / pd_.nu);
 
         % --- Hansen's skewed-t transform ---
