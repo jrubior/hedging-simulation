@@ -2,6 +2,11 @@
 %  Calibrate SV-X (Skewed-t + Leverage + Vol-Driven Jumps) for FDM
 %  returns using Simulated Method of Moments (SMM).
 %
+%  Model:
+%    r_t = alpha + beta*m_t + gamma'*s_t + exp(0.5*h_t)*eps_t
+%          + J_t*Z_t - p_{j,t}*mu_j                  [jump-compensated]
+%          (E[J_t*Z_t | F_{t-1}] = p_{j,t}*mu_j)
+%
 %  Mean equation estimated via OLS (fixed).
 %  Distributional parameters calibrated to match 7 target moments.
 
@@ -94,7 +99,7 @@ xi    = randn(Tsim, Nsim_final);
 h_sim = zeros(Tsim, Nsim_final);
 sqrt_1mrho2 = sqrt(max(1 - p.rho^2, 0));
 
-h_sim(1,:) = p.omega + p.delta_v * Vz(1,:) + p.sigmah * xi(1,:);
+h_sim(1,:) = p.omega + p.delta_v * Vz(1,:) + p.sigmah / sqrt(max(1 - p.phi^2, 1e-6)) * xi(1,:);
 for t = 2:Tsim
     h_sim(t,:) = p.omega + p.phi * (h_sim(t-1,:) - p.omega) + ...
                  p.delta_v * Vz(t,:) + ...

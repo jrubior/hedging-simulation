@@ -9,6 +9,7 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
 % Model:
 %   r_t = alpha + beta*m_t + gamma'*s_t + exp(0.5*h_t)*eps_t
 %         + J_t*Z_t - p_{j,t}*mu_j                  [jump-compensated]
+%         (E[J_t*Z_t | F_{t-1}] = p_{j,t}*mu_j)
 %   eps_t ~ Hansen_skewt(nu, lambda)
 %   xi_t  ~ N(0,1), independent of eps_t
 %   h_t = omega + phi*(h_{t-1}-omega) + delta_v*v_t
@@ -215,7 +216,7 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
         h_ = zeros(Tsim, Nsim);
         sqrt1mr2_ = sqrt(max(1 - pd_.rho^2, 0));
 
-        h_(1,:) = pd_.omega + pd_.delta_v * Vz(1,:) + pd_.sigmah * xi_(1,:);
+        h_(1,:) = pd_.omega + pd_.delta_v * Vz(1,:) + pd_.sigmah / sqrt(max(1 - pd_.phi^2, 1e-6)) * xi_(1,:);
         for t_ = 2:Tsim
             h_(t_,:) = pd_.omega + pd_.phi * (h_(t_-1,:) - pd_.omega) + ...
                        pd_.delta_v * Vz(t_,:) + ...
