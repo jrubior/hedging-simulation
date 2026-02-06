@@ -94,9 +94,10 @@ xi    = randn(Tsim, Nsim_final);
 h_sim = zeros(Tsim, Nsim_final);
 sqrt_1mrho2 = sqrt(max(1 - p.rho^2, 0));
 
-h_sim(1,:) = p.omega + p.sigmah * xi(1,:);
+h_sim(1,:) = p.omega + p.delta_v * Vz(1,:) + p.sigmah * xi(1,:);
 for t = 2:Tsim
     h_sim(t,:) = p.omega + p.phi * (h_sim(t-1,:) - p.omega) + ...
+                 p.delta_v * Vz(t,:) + ...
                  p.sigmah * (p.rho * eps_sim(t-1,:) + sqrt_1mrho2 * xi(t,:));
 end
 

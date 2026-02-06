@@ -11,20 +11,20 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
 %         + J_t*Z_t - p_{j,t}*mu_j                  [jump-compensated]
 %   eps_t ~ Hansen_skewt(nu, lambda)
 %   xi_t  ~ N(0,1), independent of eps_t
-%   h_t = omega + phi*(h_{t-1}-omega)
+%   h_t = omega + phi*(h_{t-1}-omega) + delta_v*v_t
 %         + sigma_h*(rho*eps_{t-1} + sqrt(1-rho^2)*xi_t)
 %   p_{j,t} = sigmoid(psi_0 + psi'*v_t)
 %   Z_t ~ Exp(mu_j)
 %
 % Stage 1: Mean equation (alpha, beta, gamma) via OLS — held fixed.
 % Stage 2: Distributional params via Simulated Method of Moments:
-%   [omega, phi, sigmah, nu, lambda, rho, psi0, psi(Kv), mu_j]
+%   [omega, phi, sigmah, delta_v, nu, lambda, rho, psi0, psi(Kv), mu_j]
 %
 % Arguments:
 %   r  - T x 1 returns
 %   m  - T x 1 market returns
 %   S  - T x K state variables
-%   V  - T x Kv volatility states for jump intensity
+%   V  - T x Kv volatility states (jump intensity + vol equation via delta_v)
 %   target_moments - 9 x 1: [mean_m; mean_ann; var_m; std_m; std_ann; skew; exkurt; beta; beta_down]
 %
 % Options:
@@ -105,6 +105,7 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
     omega0   = log(v0);
     phi0     = 0.85;
     sigmah0  = 0.30;
+    deltav0  = 0;
     nu0      = 5;
     lambda0  = 0.3;
     rho0     = -0.1;
@@ -117,13 +118,14 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
     if isfield(ip,'omega'),   omega0   = ip.omega;   end
     if isfield(ip,'phi'),     phi0     = ip.phi;     end
     if isfield(ip,'sigmah'),  sigmah0  = ip.sigmah;  end
+    if isfield(ip,'delta_v'), deltav0  = ip.delta_v; end
     if isfield(ip,'nu'),      nu0      = ip.nu;      end
     if isfield(ip,'lambda'),  lambda0  = ip.lambda;  end
     if isfield(ip,'rho'),     rho0     = ip.rho;     end
     if isfield(ip,'mu_j'),    muj0     = ip.mu_j;    end
     if isfield(ip,'psi0'),    psi00    = ip.psi0;    end
 
-    theta0 = pack_dist(omega0, phi0, sigmah0, nu0, lambda0, rho0, ...
+    theta0 = pack_dist(omega0, phi0, sigmah0, deltav0, nu0, lambda0, rho0, ...
                         psi00, psi0_vec, muj0);
 
     % -------- Normalization for objective --------
@@ -151,7 +153,7 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
     param_hat.omega  = pd.omega;
     param_hat.phi    = pd.phi;
     param_hat.sigmah = pd.sigmah;
-    param_hat.delta  = zeros(K,1);   % not calibrated (set to 0)
+    param_hat.delta_v = pd.delta_v;
     param_hat.nu     = pd.nu;
     param_hat.lambda = pd.lambda;
     param_hat.rho    = pd.rho;
@@ -213,9 +215,10 @@ function results = calibrate_smm_skewt_jumpv(r, m, S, V, target_moments, varargi
         h_ = zeros(Tsim, Nsim);
         sqrt1mr2_ = sqrt(max(1 - pd_.rho^2, 0));
 
-        h_(1,:) = pd_.omega + pd_.sigmah * xi_(1,:);
+        h_(1,:) = pd_.omega + pd_.delta_v * Vz(1,:) + pd_.sigmah * xi_(1,:);
         for t_ = 2:Tsim
             h_(t_,:) = pd_.omega + pd_.phi * (h_(t_-1,:) - pd_.omega) + ...
+                       pd_.delta_v * Vz(t_,:) + ...
                        pd_.sigmah * (pd_.rho * eps_(t_-1,:) + sqrt1mr2_ * xi_(t_,:));
         end
 
@@ -267,6 +270,7 @@ function print_smm_report(res)
     fprintf('omega  :                     %8.6f\n', p.omega);
     fprintf('phi    :                     %8.6f\n', p.phi);
     fprintf('sigmah :                     %8.6f\n', p.sigmah);
+    fprintf('delta_v (eq vol in h_t):     %+8.6f\n', p.delta_v);
     fprintf('nu     (df):                 %8.6f\n', p.nu);
     fprintf('lambda (skewness):           %8.6f\n', p.lambda);
     fprintf('rho    (leverage):           %8.6f\n', p.rho);
@@ -298,34 +302,35 @@ end
 
 %% ============================================================
 %  Parameter packing/unpacking for distributional params
-%  theta_dist = [omega; eta_phi; eta_sh; eta_nu; eta_lam; eta_rho;
+%  theta_dist = [omega; eta_phi; eta_sh; delta_v; eta_nu; eta_lam; eta_rho;
 %                psi0; psi(Kv); eta_muj]
 %% ============================================================
-function theta = pack_dist(omega, phi, sigmah, nu, lambda, rho, psi0, psi, muj)
+function theta = pack_dist(omega, phi, sigmah, delta_v, nu, lambda, rho, psi0, psi, muj)
     eta_phi = atanh(max(min(phi,0.999),-0.999));
     eta_sh  = log(max(sigmah, 1e-6));
     eta_nu  = log(max(nu-2, 1e-6));
     eta_lam = atanh(max(min(lambda,0.999),-0.999));
     eta_rho = atanh(max(min(rho,0.999),-0.999));
     eta_muj = log(max(muj - 0.01, 1e-6));
-    theta = [omega; eta_phi; eta_sh; eta_nu; eta_lam; eta_rho; ...
+    theta = [omega; eta_phi; eta_sh; delta_v; eta_nu; eta_lam; eta_rho; ...
              psi0; psi(:); eta_muj];
 end
 
 function pd = unpack_dist(theta, Kv)
     idx = 0;
     pd = struct();
-    idx = idx+1; pd.omega  = theta(idx);
-    idx = idx+1; pd.phi    = tanh(theta(idx));
-    idx = idx+1; pd.sigmah = exp(theta(idx));
-    idx = idx+1; pd.nu     = 2 + exp(theta(idx));
-    idx = idx+1; pd.lambda = tanh(theta(idx));
-    idx = idx+1; pd.rho    = tanh(theta(idx));
-    idx = idx+1; pd.psi0   = theta(idx);
+    idx = idx+1; pd.omega   = theta(idx);
+    idx = idx+1; pd.phi     = tanh(theta(idx));
+    idx = idx+1; pd.sigmah  = exp(theta(idx));
+    idx = idx+1; pd.delta_v = theta(idx);
+    idx = idx+1; pd.nu      = 2 + exp(theta(idx));
+    idx = idx+1; pd.lambda  = tanh(theta(idx));
+    idx = idx+1; pd.rho     = tanh(theta(idx));
+    idx = idx+1; pd.psi0    = theta(idx);
     if Kv > 0
         pd.psi = theta(idx+1:idx+Kv); idx = idx + Kv;
     else
         pd.psi = zeros(0,1);
     end
-    idx = idx+1; pd.mu_j   = 0.01 + exp(theta(idx));
+    idx = idx+1; pd.mu_j    = 0.01 + exp(theta(idx));
 end
