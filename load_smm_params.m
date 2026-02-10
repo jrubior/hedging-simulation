@@ -16,7 +16,9 @@ function results = load_smm_params(filename)
 
     kv = struct();
     while ~feof(fid)
-        line = strtrim(fgetl(fid));
+        line = fgetl(fid);
+        if ~ischar(line), break; end
+        line = strtrim(line);
         if isempty(line) || line(1) == '#'
             continue;
         end
