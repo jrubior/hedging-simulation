@@ -46,22 +46,15 @@ moments_tab = readtable(file, 'Sheet', 'Moments');
 target_fdm = moments_tab{:, 2};
 target_hdg = moments_tab{:, 3};
 
-%% ======== Calibration settings ========
-Nsim       = 5000;
-Seed       = 42;
-MaxIter    = 3000;
-Weights    = [1 0 1 1 0 3 3 2 2];
+%% ======== Load calibrated parameters from files ========
 Nsim_final = 10000;
 Tsim       = length(m);
 
-%% ======== Calibrate both models ========
-fprintf('\n================ CALIBRATING FDM ================\n');
-results_fdm = calibrate_smm_skewt_jumpv(r_fdm, m, S, V_jump, target_fdm, ...
-    'Nsim', Nsim, 'Seed', Seed, 'MaxIter', MaxIter, 'Weights', Weights);
+fprintf('\n================ LOADING FDM PARAMETERS ================\n');
+results_fdm = load_smm_params('params_fdm.txt');
 
-fprintf('\n================ CALIBRATING HEDGING ================\n');
-results_hdg = calibrate_smm_skewt_jumpv(r_hdg, m, S, V_jump, target_hdg, ...
-    'Nsim', Nsim, 'Seed', Seed, 'MaxIter', MaxIter, 'Weights', Weights);
+fprintf('\n================ LOADING HEDGING PARAMETERS ================\n');
+results_hdg = load_smm_params('params_hedging.txt');
 
 %% ======== Simulate from both models ========
 fprintf('\n================ SIMULATING ================\n');

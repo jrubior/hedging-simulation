@@ -128,6 +128,10 @@ for iv = 1:length(p_fdm.psi)
 end
 fprintf('================================================================\n\n');
 
+%% ---- Save calibrated parameters to files ----
+save_smm_params(results_fdm, 'params_fdm.txt');
+save_smm_params(results_hdg, 'params_hedging.txt');
+
 
 %% ======== Local function: final simulation ========
 function avg = final_simulation(results, r, m, S, V_jump, ...

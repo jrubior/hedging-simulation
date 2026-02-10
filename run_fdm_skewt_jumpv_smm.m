@@ -149,3 +149,6 @@ for i = 1:9
     fprintf('%-25s %12.6f %12.6f %+9.2f%%\n', labels{i}, target(i), avg(i), pct);
 end
 fprintf('================================================================\n\n');
+
+%% ---- Save calibrated parameters to file ----
+save_smm_params(results, 'params_fdm.txt');
